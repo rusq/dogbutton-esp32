@@ -16,9 +16,8 @@ You need:
 1. A button (or M5AtomLite, it has a couple of those)
 2. A telegram bot (get token from https://t.me/botfather)
 3. Wifi SSID/Password
-4. A neighbour dog that barks.
-5. OCD on those barks.
-6. Wifi.
+4. A neighbour's dog that barks.
+5. OCD on listening to the dog barking.
 
 Usage
 -----
