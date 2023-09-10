@@ -7,7 +7,7 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <esp_wifi.h>
-
+#include <freertos/task.h>
 
 const char *godaddy_root =
     "-----BEGIN CERTIFICATE-----\n"
@@ -49,9 +49,13 @@ WiFiClientSecure client;
 UniversalTelegramBot bot(BOT_TOKEN, client);
 RTC_NOINIT_ATTR const String chat_id = ADMIN_ID;
 
+uint32_t num_presses = 0;
+TaskHandle_t htskButton = NULL; // button task handler
+
 // function declarations
 void report();
 void wakeup();
+void task_button(void *pvParameters);
 
 // interrupt/event handlers
 void on_connected(WiFiEvent_t event, WiFiEventInfo_t info);
@@ -77,11 +81,33 @@ void setup() {
 
     m5pow::init_power_save(em5::BUTTON_PIN);
     cycles::init();
+
+    // start tasks
+    xTaskCreatePinnedToCore(task_button, "button", 4096, NULL, 1, &htskButton,
+                            1);
 }
 
+// task_button handles the button press event and increases the number of
+// messages to be sent.  Main loop checks the number of messages and sends 
+// if there are any.
+void task_button(void *pvParameters) {
+    USBSerial.printf("button handler running on core %d\n", xPortGetCoreID());
+    while (true) {
+        if (M5.Btn.wasPressed()) {
+            num_presses++;
+            USBSerial.printf("queued messages: %d\n", num_presses);
+        }
+        cycles::wait();
+        M5.Btn.read();
+    }
+}
+
+// main loop
 void loop() {
-    if (M5.Btn.wasPressed()) {
+    while (num_presses > 0) {
         report();
+        num_presses--;
+        USBSerial.printf("dequeued 1, remaining messages: %d\n", num_presses);
         last_pressed = millis();
     }
     // sleep if there was no activity for a while
@@ -103,10 +129,8 @@ void loop() {
         } else {
             // woken up
             wakeup();
-            report();
         }
     }
-    M5.Btn.read(); // or M5.update(); but this is more explicit.
     cycles::wait();
 }
 
@@ -117,7 +141,7 @@ void report() {
         return;
     }
     em5::led(MBLUE);
-    if (!bot.sendMessage(chat_id, "dog bark")) {
+    if (!bot.sendMessage(chat_id, "dev test message")) {
         USBSerial.println("send error");
         em5::led(MYELLOW);
     } else {
@@ -147,7 +171,6 @@ void wakeup() {
     }
     USBSerial.println("reconnected");
     last_pressed = millis();
-    // connected = true?
     em5::ready();
 }
 
