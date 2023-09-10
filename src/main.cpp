@@ -37,7 +37,7 @@ const char *godaddy_root =
 
 // sleepTimeout is the time between keypresses after which the device goes to
 // sleep. It is expressed in milliseconds.
-const uint32_t SLEEP_TIMEOUT = 60000; // 60 sec
+const uint32_t SLEEP_TIMEOUT = 180000; // 180 sec
 uint32_t last_pressed = 0;
 
 // wifi creds:
