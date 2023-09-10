@@ -49,13 +49,13 @@ WiFiClientSecure client;
 UniversalTelegramBot bot(BOT_TOKEN, client);
 RTC_NOINIT_ATTR const String chat_id = ADMIN_ID;
 
-uint32_t num_presses = 0;
-TaskHandle_t htskButton = NULL; // button task handler
+uint32_t num_presses = 0; // number of messages to be sent
+TaskHandle_t htskButton = NULL; // button task handle
 
 // function declarations
 void report();
 void wakeup();
-void task_button(void *pvParameters);
+void task_button(void *pvParameters); // task handling button presses
 
 // interrupt/event handlers
 void on_connected(WiFiEvent_t event, WiFiEventInfo_t info);
@@ -71,7 +71,8 @@ void setup() {
     M5.Btn.begin();
     pinMode(em5::BUTTON_PIN, INPUT_PULLUP);
 
-    WiFi.onEvent(on_connected, ARDUINO_EVENT_WIFI_STA_CONNECTED);
+    // WiFi.onEvent(on_connected, ARDUINO_EVENT_WIFI_STA_CONNECTED);
+    WiFi.onEvent(on_connected, ARDUINO_EVENT_WIFI_STA_GOT_IP);
     WiFi.mode(WIFI_MODE_STA);
     WiFi.begin(ssid, password);
 
@@ -175,8 +176,7 @@ void wakeup() {
 }
 
 void on_connected(WiFiEvent_t event, WiFiEventInfo_t info) {
-    USBSerial.println("Connected to AP");
-    USBSerial.println(WiFi.localIP());
+    USBSerial.printf("Connected to AP, IP: %s\n", WiFi.localIP().toString().c_str());
     connected = true;
     em5::ready();
 }
