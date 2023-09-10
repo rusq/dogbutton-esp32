@@ -48,9 +48,14 @@ How to build the project
 Originally built for M5Atom-Lite S3, but should work with any ESP32,
 as long as you have a button, or two.
 
-Get the platformio: https://docs.platformio.org/en/latest/
+Get the PlatformIO: https://docs.platformio.org/en/latest/
 
 If you don't have a button, get one, now.
+
+Log level is controlled in "platformio.ini" through the "build_flags"
+variable.  To enable debug level logs, modify it to:
+
+    build_flags = -DCORE_DEBUG_LEVEL=ARDUHAL_LOG_LEVEL_DEBUG
 
 License
 -------

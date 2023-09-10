@@ -49,7 +49,7 @@ WiFiClientSecure client;
 UniversalTelegramBot bot(BOT_TOKEN, client);
 RTC_NOINIT_ATTR const String chat_id = ADMIN_ID;
 
-uint32_t num_presses = 0; // number of messages to be sent
+uint32_t num_presses = 0;       // number of messages to be sent
 TaskHandle_t htskButton = NULL; // button task handle
 
 // function declarations
@@ -63,7 +63,7 @@ void on_connected(WiFiEvent_t event, WiFiEventInfo_t info);
 void setup() {
     M5.begin(false, true, false, true);
     // put your setup code here, to run once:
-    USBSerial.println("initialising...");
+    ESP_LOGI("setup", "initialising...");
     delay(50);
 
     em5::led(MRED);
@@ -89,14 +89,14 @@ void setup() {
 }
 
 // task_button handles the button press event and increases the number of
-// messages to be sent.  Main loop checks the number of messages and sends 
+// messages to be sent.  Main loop checks the number of messages and sends
 // if there are any.
 void task_button(void *pvParameters) {
-    USBSerial.printf("button handler running on core %d\n", xPortGetCoreID());
+    ESP_LOGD("button", "task_button running on core %d", xPortGetCoreID());
     while (true) {
         if (M5.Btn.wasPressed()) {
             num_presses++;
-            USBSerial.printf("queued messages: %d\n", num_presses);
+            ESP_LOGD("button", "queued messages: %d\n", num_presses);
         }
         cycles::wait();
         M5.Btn.read();
@@ -108,27 +108,29 @@ void loop() {
     while (num_presses > 0) {
         report();
         num_presses--;
-        USBSerial.printf("dequeued 1, remaining messages: %d\n", num_presses);
+        ESP_LOGD("loop", "dequeued 1, remaining messages: %d\n", num_presses);
         last_pressed = millis();
     }
     // sleep if there was no activity for a while
     if (connected && millis() - last_pressed > SLEEP_TIMEOUT) {
-        USBSerial.println("no activity for a while, going to sleep");
+        ESP_LOGI("loop", "no activity for a while, going to sleep");
         em5::led(MGREEN, em5::sleepBrightness);
 
         connected = false;
         esp_err_t err;
         err = esp_wifi_stop(); // https://esp32.com/viewtopic.php?t=20960
         if (err != ESP_OK) {
-            USBSerial.printf("esp_wifi_stop: %s\n", esp_err_to_name(err));
+            ESP_LOGE("loop", "esp_wifi_stop: %s\n", esp_err_to_name(err));
+            return;
         }
 
         err = esp_light_sleep_start();
         if (err != ESP_OK) {
-            USBSerial.printf("esp_light_sleep_start: %s\n",
-                             esp_err_to_name(err));
+            ESP_LOGE("loop", "esp_light_sleep_start: %s\n",
+                     esp_err_to_name(err));
         } else {
             // woken up
+            ESP_LOGD("loop", "awakened");
             wakeup();
         }
     }
@@ -137,13 +139,13 @@ void loop() {
 
 void report() {
     if (!connected) {
-        USBSerial.println("Not connected to wifi");
+        ESP_LOGW("report", "not connected to wifi");
         em5::led(MRED | MBLUE);
         return;
     }
     em5::led(MBLUE);
     if (!bot.sendMessage(chat_id, "dev test message")) {
-        USBSerial.println("send error");
+        ESP_LOGE("report", "send error occurred");
         em5::led(MYELLOW);
     } else {
         em5::ready();
@@ -153,30 +155,31 @@ void report() {
 void wakeup() {
     em5::led(MRED | MBLUE);
 
-    USBSerial.println("woke up, reestablish wifi connection");
+    ESP_LOGI("loop", "reestablishing wifi connection");
 
     esp_err_t err = esp_wifi_start();
     if (err != ESP_OK) {
-        USBSerial.printf("esp_wifi_start: %s\n", esp_err_to_name(err));
+        ESP_LOGE("wakeup", "esp_wifi_start: %s\n", esp_err_to_name(err));
         em5::led(MYELLOW);
         return;
     }
     if (!WiFi.reconnect()) {
-        USBSerial.println("WiFi.reconnect failed");
+        ESP_LOGE("wakeup", "WiFi.reconnect failed");
         em5::led(MYELLOW);
         return;
     }
-    USBSerial.println("waiting for connection");
+    ESP_LOGI("wakeup", "waiting for connection");
     while (WiFi.status() != WL_CONNECTED) {
         cycles::wait();
     }
-    USBSerial.println("reconnected");
+    ESP_LOGI("wakeup", "reconnected");
     last_pressed = millis();
     em5::ready();
 }
 
 void on_connected(WiFiEvent_t event, WiFiEventInfo_t info) {
-    USBSerial.printf("Connected to AP, IP: %s\n", WiFi.localIP().toString().c_str());
+    ESP_LOGI("wifi", "Connected to AP, IP: %s\n",
+             WiFi.localIP().toString().c_str());
     connected = true;
     em5::ready();
 }
