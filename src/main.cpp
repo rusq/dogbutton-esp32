@@ -9,6 +9,8 @@
 #include <esp_wifi.h>
 #include <freertos/task.h>
 
+const String message = "dog bark";
+
 const char *godaddy_root =
     "-----BEGIN CERTIFICATE-----\n"
     "MIIEADCCAuigAwIBAgIBADANBgkqhkiG9w0BAQUFADBjMQswCQYDVQQGEwJVUzEh\n"
@@ -53,7 +55,7 @@ uint32_t num_presses = 0;       // number of messages to be sent
 TaskHandle_t htskButton = NULL; // button task handle
 
 // function declarations
-void report();
+void report(const String msg);
 void wakeup();
 void task_button(void *pvParameters); // task handling button presses
 
@@ -98,7 +100,7 @@ void task_button(void *pvParameters) {
             num_presses++;
             ESP_LOGD("button", "queued messages: %d\n", num_presses);
         }
-        cycles::wait();
+        vTaskDelay(50 / portTICK_PERIOD_MS);
         M5.Btn.read();
     }
 }
@@ -106,7 +108,7 @@ void task_button(void *pvParameters) {
 // main loop
 void loop() {
     while (num_presses > 0) {
-        report();
+        report(message);
         num_presses--;
         ESP_LOGD("loop", "dequeued 1, remaining messages: %d\n", num_presses);
         last_pressed = millis();
@@ -137,14 +139,14 @@ void loop() {
     cycles::wait();
 }
 
-void report() {
+void report(const String msg) {
     if (!connected) {
         ESP_LOGW("report", "not connected to wifi");
         em5::led(MRED | MBLUE);
         return;
     }
     em5::led(MBLUE);
-    if (!bot.sendMessage(chat_id, "dev test message")) {
+    if (!bot.sendMessage(chat_id, msg)) {
         ESP_LOGE("report", "send error occurred");
         em5::led(MYELLOW);
     } else {
